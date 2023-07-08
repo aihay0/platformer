@@ -18,14 +18,22 @@ public class Movement : MonoBehaviour
     private float jump;
     private float djump;
     private float tslj;
+    private float tsll;
+    private float tslr;
     private float jumped;
     private float timesincefall;
+    private float rightdash;
+    private float leftdash;
+    private float tsldash;
+    private bool releasedleft;
+    private bool releasedright;
     private bool released;
     private bool djumped;
     private bool canjump;
     private bool suffocated;
     private bool wasfalling;
     private bool stoppedjumping;
+    private bool gravityup;
     // Start is called before the first frame update
     void Start()
     {
@@ -35,13 +43,21 @@ public class Movement : MonoBehaviour
         jump = 0;
         jumped = 0;
         tslj = 100.0f;
+        tsll = 100.0f;
+        tslr = 100.0f;
+        tsldash = 100.0f;
         timesincefall = 100.0f;
+        rightdash = 0;
+        leftdash = 0;
         djumped = true;
         released = true;
         canjump = true;
         stoppedjumping = false;
         suffocated = false;
         wasfalling = false;
+        gravityup = false;
+        releasedleft = true;
+        releasedright = true;
     }
     private int collision(float curx, float cury)
     {
@@ -103,6 +119,9 @@ public class Movement : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+    	int gravity=1;
+    	if(gravityup==true)
+    		gravity=-1;
     	if(coltyp[1])
 		    return;
     	suffocated=false;
@@ -112,12 +131,15 @@ public class Movement : MonoBehaviour
     	if(coltyp[2]||suffocated)
     		Start();
     	tslj+=Time.deltaTime;
+    	tsll+=Time.deltaTime;
+    	tslr+=Time.deltaTime;
     	timesincefall+=Time.deltaTime;
-    	if(timesincefall>0.5&&timesincefall<100)
+    	tsldash+=Time.deltaTime;
+    	if(timesincefall>0.2&&timesincefall<100)
     		canjump=false;
         if ((Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.UpArrow) || tslj<0.5f))
         {
-            if (djumped==false&&canjump==false)
+            if (djumped==false&&canjump==false&&(Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.UpArrow)))
             {
                 if (djumped == false && released)
                 {
@@ -128,7 +150,7 @@ public class Movement : MonoBehaviour
                     wasfalling=true;
                 }
             }
-            else if(canjump&&released)
+            else if(canjump)
             {
     	        jump = 0.5f;
     	        jumped = 0.5f;
@@ -138,15 +160,26 @@ public class Movement : MonoBehaviour
 	            djumped = true;
 	            jumptrigger.gameObject.transform.Translate(new Vector3(1,0,0));
 	            stoppedjumping = false;
+	            tslj=100.0f;
             }
-            else if(released==false&&djumped&&stoppedjumping==false){
+            else if(released==false&&djumped&&stoppedjumping==false&&(Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.UpArrow))){
             	float x=Time.deltaTime*10;
             	if(jumped+x>2)
             		x=2-jumped;
             	jump+=x;
             	jumped+=x;
             }
-            released = false;
+            else if(released&&(Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.UpArrow)))
+            	tslj=0;
+            if(Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.UpArrow))
+	            released = false;
+	        else{
+	        	released = true;
+	            if(djumped==true&&stoppedjumping==false){
+	            	djumped=false;
+	            	stoppedjumping = true;
+	            }
+	        }
         }
         else
         {
@@ -166,8 +199,8 @@ public class Movement : MonoBehaviour
                 x = Time.deltaTime * djump*3;
             else
                 x = Time.deltaTime * (jump+y)*3;
-            Vector3 v = new Vector3(0, x*5, 0);
-            if(collision(transform.position.x,transform.position.y+x*5)==-1){
+            Vector3 v = new Vector3(0, x*5*gravity, 0);
+            if(collision(transform.position.x,transform.position.y+x*5*gravity)==-1){
 	            transform.Translate(v);
 	        }
 	        else{
@@ -177,6 +210,8 @@ public class Movement : MonoBehaviour
 		    		return;
 		    	if(coltyp[2])
 		    		Start();
+		    	if(coltyp[4])
+		    		gravityup=!gravityup;
 	        }
             if (jump > 0.0f)
                 jump-=x*3;
@@ -191,8 +226,8 @@ public class Movement : MonoBehaviour
             falling+=Time.deltaTime;
             if (falling > 0.5f)
                 falling = 0.5f;
-            Vector3 v = new Vector3(0, -(falling-0.1f)*0.2f, 0);
-            if(collision(transform.position.x,transform.position.y-(falling-0.1f)*0.2f)==-1){
+            Vector3 v = new Vector3(0, -(falling-0.1f)*0.2f*gravity, 0);
+            if(collision(transform.position.x,transform.position.y-(falling-0.1f)*0.2f*gravity)==-1){
 	            transform.Translate(v);
 	            if(wasfalling==false){
 	            	wasfalling=true;
@@ -209,6 +244,8 @@ public class Movement : MonoBehaviour
 		    		return;
 		    	if(coltyp[2])
 		    		Start();
+		    	if(coltyp[4])
+		    		gravityup=!gravityup;
 	        }
         }
         else
@@ -224,6 +261,16 @@ public class Movement : MonoBehaviour
 	    		return;
 	    	if(coltyp[2])
 	    		Start();
+	    	if(coltyp[4])
+		    	gravityup=!gravityup;
+		    if(tslr<0.1f&&releasedright&&tsldash>2)
+		    	rightdash=0.25f;
+		    tsll = 100.0f;
+		    tslr = 0.0f;
+		    releasedright = false;
+        }
+        else{
+        	releasedright = true;
         }
         if (Input.GetKey("b") || Input.GetKey(KeyCode.LeftArrow))
         {
@@ -234,6 +281,41 @@ public class Movement : MonoBehaviour
 	    		return;
 	    	if(coltyp[2])
 	    		Start();
+	    	if(coltyp[4])
+		    	gravityup=!gravityup;
+		    if(tsll<0.1f&&releasedleft&&tsldash>2)
+		    	leftdash=0.25f;
+		    tsll = 0.0f;
+		    tslr = 100.0f;
+		    releasedleft = false;
+        }
+        else
+        	releasedleft = true;
+        if(leftdash>0){
+        	tsldash = 0;
+        	leftdash-=Time.deltaTime;
+        	Vector3 v = new Vector3(-Time.deltaTime*25, 0, 0);
+        	if(collision(transform.position.x-Time.deltaTime*25,transform.position.y)==-1)
+        		transform.Translate(v);
+        	if(coltyp[1])
+	    		return;
+	    	if(coltyp[2])
+	    		Start();
+	    	if(coltyp[4])
+		    	gravityup=!gravityup;
+        }
+        if(rightdash>0){
+        	tsldash = 0;
+        	rightdash-=Time.deltaTime;
+        	Vector3 v = new Vector3(Time.deltaTime*25, 0, 0);
+        	if(collision(transform.position.x+Time.deltaTime*25,transform.position.y)==-1)
+        		transform.Translate(v);
+        	if(coltyp[1])
+	    		return;
+	    	if(coltyp[2])
+	    		Start();
+	    	if(coltyp[4])
+		    	gravityup=!gravityup;
         }
         return;
     }
